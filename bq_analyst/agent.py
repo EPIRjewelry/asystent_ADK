@@ -1,8 +1,6 @@
 import os
 
-# Ustawiamy ścieżkę do pliku z kluczem serwisowym (jeśli plik znajduje się w katalogu projektu)
-# Nie commituj pliku `adk-key.json` do repozytorium — dodamy go do .gitignore
-os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", "adk-key.json")
+
 
 from google.cloud import bigquery
 from google.adk.agents import Agent
