@@ -1,7 +1,17 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
+
+# Dodanie middleware CORS, aby przeglądarka mogła wysyłać żądania
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Dozwól wszystkim serwerom (w produkcji ogranicz do swoich domen)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class QueryRequest(BaseModel):
