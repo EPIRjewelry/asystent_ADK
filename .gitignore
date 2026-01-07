@@ -7,3 +7,5 @@ __pycache__/
 
 # Local key
 adk-key.json
+.env
+bq_analyst/.env
