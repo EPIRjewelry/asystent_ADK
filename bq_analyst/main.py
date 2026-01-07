@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from .agent import root_agent
 
 app = FastAPI()
 
@@ -25,4 +26,12 @@ def health_check():
 
 @app.post("/chat")
 def chat(request: QueryRequest):
-    return {"response": f"Odebrałem: {request.text}. (Tu agent ADK odpowie)"}
+    try:
+        result = root_agent.run(request.text)
+        # ADK AgentResult zazwyczaj ma atrybuty output / response; jeśli brak, bierzemy str()
+        answer = getattr(result, "output", None) or getattr(result, "response", None) or getattr(result, "text", None)
+        if answer is None:
+            answer = str(result)
+        return {"response": answer}
+    except Exception as e:
+        return {"error": str(e)}
