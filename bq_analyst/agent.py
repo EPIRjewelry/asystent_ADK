@@ -1,3 +1,5 @@
+import os
+
 from google.cloud import bigquery
 from google import genai
 from google.genai import types
@@ -5,6 +7,12 @@ from google.genai import types
 # --- KONFIGURACJA INFRASTRUKTURY ---
 # W Cloud Run nie potrzebujemy pliku klucza - używamy tożsamości wbudowanej
 CORRECT_PROJECT_ID = "epir-adk-agent-v2-48a86e6f"
+# Vertex AI (GenAI) – możliwość sterowania przez zmienne środowiskowe;
+# domyślnie zostawiamy pierwotny projekt i ustawiamy lokalizację na "global",
+# bo model Gemini 3 Flash bywa dostępny globalnie, a nie w każdym regionie.
+VERTEXAI_PROJECT_ID = os.getenv("VERTEXAI_PROJECT", CORRECT_PROJECT_ID)
+VERTEXAI_LOCATION = os.getenv("VERTEXAI_LOCATION", "global")
+VERTEXAI_MODEL = os.getenv("VERTEXAI_MODEL", "gemini-3-flash")
 
 try:
     # Wymuszamy projekt i region
@@ -18,10 +26,10 @@ except Exception as e:
 try:
     genai_client = genai.Client(
         vertexai=True,
-        project=CORRECT_PROJECT_ID,
-        location="us-central1"
+        project=VERTEXAI_PROJECT_ID,
+        location=VERTEXAI_LOCATION,
     )
-    print(f"🔌 [SYSTEM] Połączono z Vertex AI GenAI")
+    print(f"🔌 [SYSTEM] Połączono z Vertex AI GenAI (project={VERTEXAI_PROJECT_ID}, location={VERTEXAI_LOCATION})")
 except Exception as e:
     genai_client = None
     print(f"⚠️ [SYSTEM] Błąd inicjalizacji GenAI: {e}")
@@ -114,7 +122,7 @@ def run_agent(prompt: str) -> tuple[str, object | None]:
     
     try:
         response = genai_client.models.generate_content(
-            model='gemini-3-flash',
+            model=VERTEXAI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
