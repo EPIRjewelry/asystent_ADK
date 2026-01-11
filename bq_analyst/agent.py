@@ -69,7 +69,7 @@ def run_agent(prompt: str) -> tuple[str, object | None]:
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                tools=registry_tools.tools,
+                tools=[types.Tool(function_declarations=registry_tools.tools)],
                 temperature=0.7,
             )
         )
