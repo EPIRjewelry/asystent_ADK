@@ -28,7 +28,7 @@ except Exception as e:
         return {
 
 # Ustaw projekt GCP do autoryzacji przez środowisko Cloud Run
-CORRECT_PROJECT_ID = "cs-host-69a5f1151aad45bf857b40"
+
             "note": "Output limited to 50 rows for context safety."
         }
     # Wymuszamy projekt i region (autoryzacja przez środowisko Cloud Run)
