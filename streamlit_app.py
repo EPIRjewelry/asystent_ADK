@@ -16,8 +16,13 @@ if st.button("Wyślij zapytanie do agenta"):
     else:
         try:
             with st.spinner("Agent analizuje dane BigQuery..."):
-                # Wywołanie agenta przez funkcję run_agent
-                answer, response_obj = run_agent(prompt)
+                # Wywołanie agenta przez funkcję run_agent (obsługa tuple lub single)
+                result = run_agent(prompt)
+                if isinstance(result, tuple) and len(result) == 2:
+                    answer, response_obj = result
+                else:
+                    answer = result
+                    response_obj = None
                 thought_trace = ""
                 if response_obj:
                     candidates = getattr(response_obj, "candidates", None)

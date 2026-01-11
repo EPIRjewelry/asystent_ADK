@@ -99,7 +99,7 @@ Twoim celem jest wyciąganie wniosków biznesowych z danych BigQuery.
 5. Zawsze podawaj źródło danych (dataset.table).
 """
 
-def run_agent(prompt: str) -> str:
+def run_agent(prompt: str) -> tuple[str, object | None]:
     """
     Uruchamia agenta analitycznego z danym zapytaniem.
     
@@ -107,10 +107,10 @@ def run_agent(prompt: str) -> str:
         prompt: Zapytanie użytkownika
     
     Returns:
-        Odpowiedź agenta jako string
+        Tuple zawierający tekst odpowiedzi oraz obiekt odpowiedzi (do śledzenia procesu myślowego)
     """
     if not genai_client:
-        return "Błąd: Klient GenAI nie został zainicjalizowany."
+        return "Błąd: Klient GenAI nie został zainicjalizowany.", None
     
     try:
         response = genai_client.models.generate_content(
@@ -123,7 +123,8 @@ def run_agent(prompt: str) -> str:
             )
         )
         
-        return response.text if response.text else str(response)
+        text = response.text if response.text else str(response)
+        return text, response
     
     except Exception as e:
-        return f"Błąd podczas pracy agenta: {str(e)}"
+        return f"Błąd podczas pracy agenta: {str(e)}", None
