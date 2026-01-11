@@ -6,8 +6,8 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Instalacja zależności
-COPY requirements-streamlit.txt .
-RUN pip install --no-cache-dir -r requirements-streamlit.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Kopiowanie kodu
 COPY . .
