@@ -1,0 +1,11 @@
+epir@cloudshell:~/asystent_ADK (epir-adk-agent-v2-48a86e6f)$ gcloud run services add-iam-policy-binding asystent-adk \
+  --region=us-central1 \
+  --member=user:epir@epirbizuteria.pl \
+  --role=roles/run.invoker
+Updated IAM policy for service [asystent-adk].
+bindings:
+- members:
+  - user:epir@epirbizuteria.pl
+  role: roles/run.invoker
+etag: BwZHzhvgScI=
+version: 1

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Prosty interfejs do agenta Cloud Run</title>
+</head>
+<body>
+  <h2>Wyślij zapytanie do agenta</h2>
+  <textarea id="prompt" rows="4" cols="60" placeholder="Wpisz prompt..."></textarea><br>
+  <button onclick="sendPrompt()">Wyślij</button>
+  <pre id="response"></pre>
+  <script>
+    async function sendPrompt() {
+      const prompt = document.getElementById('prompt').value;
+      const responseBox = document.getElementById('response');
+      responseBox.textContent = 'Czekam na odpowiedź...';
+
+      try {
+        const res = await fetch('https://asystent-adk-580145215562.us-central1.run.app/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: prompt })
+        });
+        const data = await res.json();
+        responseBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        responseBox.textContent = 'Błąd: ' + err;
+      }
+    }
+  </script>
+</body>
+</html>
