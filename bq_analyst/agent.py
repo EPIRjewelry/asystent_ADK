@@ -17,6 +17,19 @@ except Exception as e:
 
 # --- NARZĘDZIA (TOOLS) ---
 
+def run_sql_query(query: str) -> dict:
+    """
+    Wykonuje zapytanie SQL do BigQuery i zwraca wyniki.
+    
+    Args:
+        query: Zapytanie SQL (Standard SQL)
+    
+    Returns:
+        Dict zawierający wyniki lub błąd
+    """
+    if not bq_client:
+        return {"error": "BigQuery client not connected."}
+    
     forbidden = ["DELETE", "DROP", "UPDATE", "INSERT", "ALTER", "TRUNCATE", "MERGE", "GRANT"]
     if any(cmd in query.upper() for cmd in forbidden):
         return {"error": "SAFETY VIOLATION: Modification commands are strictly forbidden."}
@@ -26,17 +39,28 @@ except Exception as e:
         results = [dict(row) for row in query_job]
         
         return {
-
-# Ustaw projekt GCP do autoryzacji przez środowisko Cloud Run
-
+            "status": "success",
+            "rows": results[:50],
+            "row_count": len(results),
             "note": "Output limited to 50 rows for context safety."
         }
-    # Wymuszamy projekt i region (autoryzacja przez środowisko Cloud Run)
-    bq_client = bigquery.Client(project=CORRECT_PROJECT_ID, location="us-central1")
-    print(f"🔌 [SYSTEM] Połączono z BigQuery. Projekt: {bq_client.project}")
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 def get_table_schema(dataset_id: str, table_id: str) -> dict:
+    """
+    Pobiera schemat tabeli z BigQuery.
+    
+    Args:
+        dataset_id: ID datasetu
+        table_id: ID tabeli
+    
+    Returns:
+        Dict zawierający schemat tabeli
+    """
     if not bq_client:
-    print(f"⚠️ [SYSTEM] Błąd inicjalizacji: {e}")
+        return {"error": "BigQuery client not connected."}
         
     try:
         table_ref = bq_client.dataset(dataset_id).table(table_id)
@@ -46,18 +70,22 @@ def get_table_schema(dataset_id: str, table_id: str) -> dict:
             for field in table.schema
         ]
         return {"status": "success", "schema": schema}
-        return {"error": "BigQuery client not connected."}
+    except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
 # --- LOGIKA AGENTA ---
 
 SYSTEM_PROMPT = """
 Jesteś Starszym Analitykiem Danych w EPIR Art Jewellery. 
 Twoim celem jest wyciąganie wniosków biznesowych z danych BigQuery.
-1. Analizuj intencje.
-2. Używaj get_table_schema w razie wątpliwości.
+
+**Zasady:**
+1. Analizuj intencje użytkownika.
+2. Używaj get_table_schema w razie wątpliwości co do struktury tabeli.
 3. Pisz poprawny SQL (Standard SQL).
-4. Odpowiadaj zwięźle.
+4. Odpowiadaj zwięźle i konkretnie.
+5. Zawsze podawaj źródło danych (dataset.table).
 """
 
 # Kompatybilność: starsze wersje google-genai nie mają ThinkingLevel.
@@ -73,7 +101,7 @@ thinking_planner = BuiltInPlanner(
 root_agent = Agent(
     model='gemini-3-flash-preview', 
     name='bq_analyst',
-    description="Agent analityczny SQL",
+    description="Agent analityczny SQL dla EPIR Art Jewellery",
     instruction=SYSTEM_PROMPT,
     tools=[run_sql_query, get_table_schema],
     planner=thinking_planner
