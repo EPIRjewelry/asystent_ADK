@@ -3,6 +3,7 @@ import os
 from google import genai
 from google.genai import types
 from google.adk.tools.api_registry import ApiRegistry
+from .mcp_adapter import convert_toolset_to_vertex_tools
 
 # --- KONFIGURACJA INFRASTRUKTURY ---
 # W Cloud Run nie potrzebujemy pliku klucza - używamy tożsamości wbudowanej
@@ -19,6 +20,7 @@ VERTEXAI_MODEL = os.getenv("VERTEXAI_MODEL", "publishers/google/models/gemini-3-
 MCP_SERVER_NAME = "projects/epir-adk-agent-v2-48a86e6f/locations/global/mcpServers/google-bigquery.googleapis.com-mcp"
 api_registry = ApiRegistry(CORRECT_PROJECT_ID)
 registry_tools = api_registry.get_toolset(mcp_server_name=MCP_SERVER_NAME)
+vertex_ai_tools = convert_toolset_to_vertex_tools(registry_tools)
 
 # Inicjalizacja klienta Google GenAI dla Vertex AI
 try:
@@ -69,7 +71,7 @@ def run_agent(prompt: str) -> tuple[str, object | None]:
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                tools=[types.Tool(function_declarations=registry_tools.tools)],
+                tools=vertex_ai_tools or None,
                 temperature=0.7,
             )
         )
@@ -79,3 +81,6 @@ def run_agent(prompt: str) -> tuple[str, object | None]:
     
     except Exception as e:
         return f"Błąd podczas pracy agenta: {str(e)}", None
+
+
+
