@@ -14,7 +14,7 @@ if st.button("Wyślij zapytanie do agenta"):
         try:
             with st.spinner("Agent analizuje dane BigQuery..."):
                 # Wywołanie agenta bezpośrednio (bez HTTP API)
-                result = root_agent.run(prompt)
+                result = root_agent(prompt)
                 
                 # Przetwarzanie wyniku AgentResult
                 answer = getattr(result, "output", None) or getattr(result, "response", None) or str(result)
