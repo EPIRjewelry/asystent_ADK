@@ -1,3 +1,7 @@
+# --- Dodane zależności ze streamlit ---
+streamlit
+google-genai>=0.5.0
+google-cloud-bigquery>=3.0.0
 aiosqlite==0.22.1
 alembic==1.17.2
 annotated-doc==0.0.4
