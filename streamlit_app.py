@@ -1,9 +1,9 @@
 import streamlit as st
-from bq_analyst.agent import root_agent
+from bq_analyst.agent import run_agent
 
 st.set_page_config(page_title="ADK Agent — Streamlit", layout="centered")
-st.title("ADK Agent — Pełna Wersja (Streamlit)")
-st.write("Agent Gemini 3 Flash działający bezpośrednio w chmurze (EPIR Art Jewellery).")
+st.title("EPIR Art Jewellery — Analityk BigQuery")
+st.write("Agent Gemini 2.5 Flash działający bezpośrednio w chmurze (Vertex AI).")
 
 prompt = st.text_area("W czym mogę Ci pomóc analitycznie?", height=180, placeholder="Np. Pokaż 5 najlepiej sprzedających się produktów...")
 
@@ -13,18 +13,11 @@ if st.button("Wyślij zapytanie do agenta"):
     else:
         try:
             with st.spinner("Agent analizuje dane BigQuery..."):
-                # Wywołanie agenta bezpośrednio (bez HTTP API)
-                result = root_agent(prompt)
-                
-                # Przetwarzanie wyniku AgentResult
-                answer = getattr(result, "output", None) or getattr(result, "response", None) or str(result)
+                # Wywołanie agenta przez funkcję run_agent
+                answer = run_agent(prompt)
                 
             st.success("Odpowiedź agenta:")
             st.markdown(answer)
-            
-            # Opcjonalny wgląd w proces myślowy
-            with st.expander("Proces myślowy (Thought Trace)"):
-                st.write(result)
                 
         except Exception as e:
             st.error(f"Wystąpił błąd podczas pracy agenta: {e}")

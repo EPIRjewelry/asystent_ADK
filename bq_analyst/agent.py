@@ -1,7 +1,6 @@
 from google.cloud import bigquery
-from google.adk.agents import Agent
-from google.adk.planners import BuiltInPlanner 
-from google.genai import types 
+from google import genai
+from google.genai import types
 
 # --- KONFIGURACJA INFRASTRUKTURY ---
 # W Cloud Run nie potrzebujemy pliku klucza - używamy tożsamości wbudowanej
@@ -13,7 +12,19 @@ try:
     print(f"🔌 [SYSTEM] Połączono z BigQuery. Projekt: {bq_client.project}")
 except Exception as e:
     bq_client = None
-    print(f"⚠️ [SYSTEM] Błąd inicjalizacji: {e}")
+    print(f"⚠️ [SYSTEM] Błąd inicjalizacji BigQuery: {e}")
+
+# Inicjalizacja klienta Google GenAI dla Vertex AI
+try:
+    genai_client = genai.Client(
+        vertexai=True,
+        project=CORRECT_PROJECT_ID,
+        location="us-central1"
+    )
+    print(f"🔌 [SYSTEM] Połączono z Vertex AI GenAI")
+except Exception as e:
+    genai_client = None
+    print(f"⚠️ [SYSTEM] Błąd inicjalizacji GenAI: {e}")
 
 # --- NARZĘDZIA (TOOLS) ---
 
@@ -88,21 +99,31 @@ Twoim celem jest wyciąganie wniosków biznesowych z danych BigQuery.
 5. Zawsze podawaj źródło danych (dataset.table).
 """
 
-# Kompatybilność: starsze wersje google-genai nie mają ThinkingLevel.
-thinking_level_value = getattr(getattr(types, "ThinkingLevel", None), "HIGH", None)
-thinking_config_kwargs = {"include_thoughts": True}
-if thinking_level_value:
-    thinking_config_kwargs["thinking_level"] = thinking_level_value
-
-thinking_planner = BuiltInPlanner(
-    thinking_config=types.ThinkingConfig(**thinking_config_kwargs)
-)
-
-root_agent = Agent(
-    model='gemini-3-flash-preview', 
-    name='bq_analyst',
-    description="Agent analityczny SQL dla EPIR Art Jewellery",
-    instruction=SYSTEM_PROMPT,
-    tools=[run_sql_query, get_table_schema],
-    planner=thinking_planner
-)
+def run_agent(prompt: str) -> str:
+    """
+    Uruchamia agenta analitycznego z danym zapytaniem.
+    
+    Args:
+        prompt: Zapytanie użytkownika
+    
+    Returns:
+        Odpowiedź agenta jako string
+    """
+    if not genai_client:
+        return "Błąd: Klient GenAI nie został zainicjalizowany."
+    
+    try:
+        response = genai_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                tools=[run_sql_query, get_table_schema],
+                temperature=0.7,
+            )
+        )
+        
+        return response.text if response.text else str(response)
+    
+    except Exception as e:
+        return f"Błąd podczas pracy agenta: {str(e)}"
