@@ -12,7 +12,7 @@ CORRECT_PROJECT_ID = "epir-adk-agent-v2-48a86e6f"
 # bo model Gemini 3 Flash bywa dostępny globalnie, a nie w każdym regionie.
 VERTEXAI_PROJECT_ID = os.getenv("VERTEXAI_PROJECT", CORRECT_PROJECT_ID)
 VERTEXAI_LOCATION = os.getenv("VERTEXAI_LOCATION", "global")
-VERTEXAI_MODEL = os.getenv("VERTEXAI_MODEL", "gemini-3-flash")
+VERTEXAI_MODEL = os.getenv("VERTEXAI_MODEL", "publishers/google/models/gemini-3-flash-preview")
 
 try:
     # Wymuszamy projekt i region
