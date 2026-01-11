@@ -86,4 +86,5 @@ pyparsing==3.3.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
 python-multipart==0.0.21
+# google-adk added to resolve module not found issue
 # USUNIĘTO: pywin32==311 (Incompatible with Linux/Docker)
