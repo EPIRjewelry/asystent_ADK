@@ -17,11 +17,6 @@ except Exception as e:
 
 # --- NARZĘDZIA (TOOLS) ---
 
-def run_sql_query(query: str) -> dict:
-    if not bq_client:
-        return {"error": "BigQuery client not connected."}
-
-    # Bezpiecznik Rzemieślnika
     forbidden = ["DELETE", "DROP", "UPDATE", "INSERT", "ALTER", "TRUNCATE", "MERGE", "GRANT"]
     if any(cmd in query.upper() for cmd in forbidden):
         return {"error": "SAFETY VIOLATION: Modification commands are strictly forbidden."}
@@ -31,17 +26,17 @@ def run_sql_query(query: str) -> dict:
         results = [dict(row) for row in query_job]
         
         return {
-            "status": "success", 
-            "rows_count": len(results), 
-            "data": results[:50], 
+
+# Ustaw projekt GCP do autoryzacji przez środowisko Cloud Run
+CORRECT_PROJECT_ID = "cs-host-69a5f1151aad45bf857b40"
             "note": "Output limited to 50 rows for context safety."
         }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
+    # Wymuszamy projekt i region (autoryzacja przez środowisko Cloud Run)
+    bq_client = bigquery.Client(project=CORRECT_PROJECT_ID, location="us-central1")
+    print(f"🔌 [SYSTEM] Połączono z BigQuery. Projekt: {bq_client.project}")
 def get_table_schema(dataset_id: str, table_id: str) -> dict:
     if not bq_client:
-        return {"error": "BigQuery client not connected."}
+    print(f"⚠️ [SYSTEM] Błąd inicjalizacji: {e}")
         
     try:
         table_ref = bq_client.dataset(dataset_id).table(table_id)
@@ -51,7 +46,7 @@ def get_table_schema(dataset_id: str, table_id: str) -> dict:
             for field in table.schema
         ]
         return {"status": "success", "schema": schema}
-    except Exception as e:
+        return {"error": "BigQuery client not connected."}
         return {"status": "error", "message": str(e)}
 
 # --- LOGIKA AGENTA ---
@@ -65,10 +60,14 @@ Twoim celem jest wyciąganie wniosków biznesowych z danych BigQuery.
 4. Odpowiadaj zwięźle.
 """
 
+# Kompatybilność: starsze wersje google-genai nie mają ThinkingLevel.
+thinking_level_value = getattr(getattr(types, "ThinkingLevel", None), "HIGH", None)
+thinking_config_kwargs = {"include_thoughts": True}
+if thinking_level_value:
+    thinking_config_kwargs["thinking_level"] = thinking_level_value
+
 thinking_planner = BuiltInPlanner(
-    thinking_config=types.ThinkingConfig(
-        include_thoughts=True
-    )
+    thinking_config=types.ThinkingConfig(**thinking_config_kwargs)
 )
 
 root_agent = Agent(
