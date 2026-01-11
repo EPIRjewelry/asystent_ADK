@@ -6,12 +6,14 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Instalacja zależności
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install uvicorn fastapi
+COPY requirements-streamlit.txt .
+RUN pip install --no-cache-dir -r requirements-streamlit.txt
 
 # Kopiowanie kodu
 COPY . .
 
-# Uruchomienie serwera (port 8080 jest wymagany przez Cloud Run)
-CMD ["uvicorn", "bq_analyst.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Expose port 8080 (wymagany przez Cloud Run)
+EXPOSE 8080
+
+# Uruchomienie Streamlit na porcie 8080
+CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8080", "--server.address=0.0.0.0", "--server.headless=true"]
