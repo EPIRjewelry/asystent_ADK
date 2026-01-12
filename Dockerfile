@@ -1,19 +1,46 @@
-# Używamy lekkiego Pythona
+# === Build Stage ===
+FROM python:3.11-slim as builder
+
+WORKDIR /build
+
+# Instalacja zależności kompilacji
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+
+
+# === Runtime Stage ===
 FROM python:3.11-slim
 
-# Ustawienia
-ENV PYTHONUNBUFFERED=1
+# Zmienne środowiskowe
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8080 \
+    ENV=production
+
 WORKDIR /app
 
-# Instalacja zależności
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Kopiowanie wheels z buildera
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
-# Kopiowanie kodu
-COPY . .
+# Kopiowanie kodu aplikacji
+COPY bq_analyst/ ./bq_analyst/
 
-# Expose port 8080 (wymagany przez Cloud Run)
+# Bezpieczeństwo: non-root user
+RUN adduser --disabled-password --gecos "" --uid 1000 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+# Port
 EXPOSE 8080
 
-# Uruchomienie Streamlit na porcie 8080
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8080", "--server.address=0.0.0.0", "--server.headless=true"]
+# Health check dla Cloud Run
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+# Uruchomienie FastAPI przez uvicorn
+CMD ["uvicorn", "bq_analyst.main:app", "--host", "0.0.0.0", "--port", "8080"]
