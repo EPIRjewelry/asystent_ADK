@@ -9,6 +9,7 @@ Agent analityczny oparty na **Vertex AI + LangGraph + FastAPI**, zaprojektowany 
 - **FastAPI**: Produkcyjne REST API kompatybilne z Cloud Run
 - **BigQuery Tools**: Bezpośredni dostęp do danych przez natywne narzędzia
 - **MemorySaver**: Kontekst konwersacji w sesji wieloturowej
+- **React UI**: Nowoczesny interfejs webowy (opcjonalny)
 
 ## 📁 Struktura projektu
 
@@ -20,9 +21,17 @@ asystent_ADK/
 │   ├── agent.py          # LangGraph Agent + Tools
 │   ├── main.py           # FastAPI Server
 │   └── mcp_adapter.py    # MCP compatibility layer
+├── frontend/             # React UI (opcjonalny)
+│   ├── src/
+│   │   ├── App.jsx       # Główny komponent
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── package.json
+│   └── vite.config.js
 ├── scripts/              # Utility scripts
 ├── requirements.txt      # Dependencies
 ├── Dockerfile            # Production container
+├── deploy.sh             # Deployment script
 └── README.md
 ```
 
@@ -104,7 +113,21 @@ POST /agent/query
 {
   "response": "W tabeli sprzedaży znajduje się 15847 rekordów.",
   "thread_id": "session-123",
-  "metadata": {
+  "🎨 Frontend (opcjonalnie)
+
+Projekt zawiera nowoczesny interfejs React w katalogu `frontend/`:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Szczegółowe instrukcje: [frontend/README.md](frontend/README.md)
+
+---
+
+## metadata": {
     "steps": 7,
     "tool_calls": 2,
     "tool_results": 2
