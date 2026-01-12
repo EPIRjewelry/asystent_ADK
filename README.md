@@ -37,6 +37,14 @@ cd asystent_ADK
 
 ### 2. Build i deploy
 
+#### Metoda A: Używając skryptu (zalecane)
+
+```bash
+bash deploy.sh
+```
+
+#### Metoda B: Ręcznie
+
 ```bash
 # Build kontenera
 gcloud builds submit --tag gcr.io/epir-adk-agent-v2-48a86e6f/bq-analyst-agent
@@ -45,10 +53,18 @@ gcloud builds submit --tag gcr.io/epir-adk-agent-v2-48a86e6f/bq-analyst-agent
 gcloud run deploy bq-analyst-agent \
   --image gcr.io/epir-adk-agent-v2-48a86e6f/bq-analyst-agent \
   --platform managed \
-  --region global \
+  --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT=epir-adk-agent-v2-48a86e6f,GOOGLE_CLOUD_LOCATION=global,MODEL_NAME=publishers/google/models/gemini-3-flash-preview
+  --set-env-vars GOOGLE_CLOUD_PROJECT=epir-adk-agent-v2-48a86e6f,GOOGLE_CLOUD_LOCATION=global,MODEL_NAME=publishers/google/models/gemini-3-flash-preview \
+  --memory 1Gi \
+  --cpu 1 \
+  --timeout 300 \
+  --max-instances 10
 ```
+
+**Uwaga**: 
+- `--region us-central1` → region Cloud Run (musi być konkretny region, nie "global")
+- `GOOGLE_CLOUD_LOCATION=global` → lokalizacja Vertex AI dla modelu (zachowane jak było)
 
 ### 3. Testowanie
 
