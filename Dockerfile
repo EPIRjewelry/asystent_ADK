@@ -3,13 +3,29 @@ FROM python:3.11-slim as builder
 
 WORKDIR /build
 
-# Instalacja zależności kompilacji
+# Instalacja zależności kompilacji + Node.js dla frontendu
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Instalacja Node.js 20.x
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build Python wheels
 COPY requirements.txt .
 RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
+
+# Build Frontend
+COPY frontend/package*.json /build/frontend/
+WORKDIR /build/frontend
+RUN npm ci
+
+COPY frontend/ /build/frontend/
+RUN (chmod +x node_modules/.bin/vite || true) \
+    && (npm run build || node node_modules/vite/bin/vite.js build)
 
 
 # === Runtime Stage ===
@@ -29,6 +45,9 @@ RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Kopiowanie kodu aplikacji
 COPY bq_analyst/ ./bq_analyst/
+
+# Kopiowanie zbudowanego frontendu
+COPY --from=builder /build/frontend/dist ./frontend/dist
 
 # Bezpieczeństwo: non-root user
 RUN adduser --disabled-password --gecos "" --uid 1000 appuser \
