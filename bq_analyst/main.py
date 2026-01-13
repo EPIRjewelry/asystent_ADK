@@ -62,7 +62,7 @@ app = FastAPI(
 # === CORS Middleware ===
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:8080"
+    "http://localhost:3000,http://localhost:8080,https://adk-agent-580145215562.us-central1.run.app"
 ).split(",")
 
 app.add_middleware(
@@ -197,6 +197,12 @@ async def chat_legacy(request: QueryRequest):
     """
     result = await query_agent(request)
     return {"response": result.response}
+
+
+# === Statyczne pliki frontendu (Vite assets) ===
+frontend_root = Path(__file__).parent.parent / "frontend" / "dist"
+if frontend_root.exists():
+    app.mount("/assets", StaticFiles(directory=frontend_root / "assets"), name="assets")
 
 
 # === SPA Fallback (musi być ostatni endpoint) ===

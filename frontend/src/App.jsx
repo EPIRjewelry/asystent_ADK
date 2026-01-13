@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Loader2, Database, Activity } from 'lucide-react';
 
 // UWAGA: Zmień na swój URL Cloud Run po deploymencie
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
