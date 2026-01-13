@@ -1,31 +1,20 @@
-# === Build Stage ===
-FROM python:3.11-slim as builder
+# === Frontend Build Stage ===
+FROM node:20-slim as frontend-builder
 
-WORKDIR /build
-
-# Instalacja zależności kompilacji + Node.js dla frontendu
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Instalacja Node.js 20.x
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
-
-# Build Python wheels
-COPY requirements.txt .
-RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
-
-# Build Frontend
-COPY frontend/package*.json /build/frontend/
-WORKDIR /build/frontend
+WORKDIR /frontend
+COPY frontend/package*.json ./
 RUN npm ci
 
-COPY frontend/ /build/frontend/
-RUN (chmod +x node_modules/.bin/vite || true) \
-    && (npm run build || node node_modules/vite/bin/vite.js build)
+COPY frontend/ ./
+RUN npm run build
+
+
+# === Python Build Stage ===
+FROM python:3.11-slim as python-builder
+
+WORKDIR /build
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
 
 # === Runtime Stage ===
@@ -39,15 +28,26 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# === Runtime Stage ===
+FROM python:3.11-slim
+
+# Zmienne środowiskowe
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8080 \
+    ENV=production
+
+WORKDIR /app
+
 # Kopiowanie wheels z buildera
-COPY --from=builder /wheels /wheels
+COPY --from=python-builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/* && rm -rf /wheels
 
 # Kopiowanie kodu aplikacji
 COPY bq_analyst/ ./bq_analyst/
 
 # Kopiowanie zbudowanego frontendu
-COPY --from=builder /build/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
 # Bezpieczeństwo: non-root user
 RUN adduser --disabled-password --gecos "" --uid 1000 appuser \
