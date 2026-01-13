@@ -24,7 +24,7 @@ class Settings:
     )
     
     # === Agent Configuration ===
-    RECURSION_LIMIT: int = int(os.getenv("AGENT_RECURSION_LIMIT", "15"))
+    RECURSION_LIMIT: int = int(os.getenv("AGENT_RECURSION_LIMIT", "25"))
     TEMPERATURE: float = float(os.getenv("AGENT_TEMPERATURE", "0.0"))
     
     # === Tracing (LangSmith) ===
