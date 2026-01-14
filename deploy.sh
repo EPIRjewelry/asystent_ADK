@@ -34,7 +34,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --cpu 1 \
   --timeout 300 \
   --max-instances 10 \
-  --service-account=adk-vertex-agent@${PROJECT_ID}.iam.gserviceaccount.com
+  --service-account=580145215562-compute@developer.gserviceaccount.com
 
 echo ""
 echo "✅ Deployment complete!"
