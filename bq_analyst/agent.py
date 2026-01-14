@@ -5,6 +5,7 @@ Wersja: 2.0.0
 from typing import List, Dict, Any, TypedDict, Annotated
 import operator
 import logging
+import os
 
 from langchain_google_vertexai import ChatVertexAI
 from langchain_core.messages import (
@@ -139,39 +140,6 @@ def execute_sql(query: str) -> str:
         raise ToolException(error_msg)
 
 
-# === System Prompt ===
-SYSTEM_INSTRUCTION = """Jesteś Głównym Analitykiem Danych firmy EPIR Art Jewellery.
-Twoim zadaniem jest odpowiadanie na pytania biznesowe, korzystając z danych w BigQuery.
-
-## ZASADY PRACY:
-
-### 1. ZAWSZE ROZPOCZNIJ OD ROZPOZNANIA STRUKTURY DANYCH
-- Użyj `list_datasets()` aby poznać dostępne datasety
-- Użyj `list_tables(dataset_id)` aby poznać tabele w datasecie
-- Użyj `get_table_schema(dataset_id, table_id)` PRZED napisaniem jakiegokolwiek SQL
-
-### 2. PISANIE SQL
-- Używaj TYLKO kolumn, które istnieją w schemacie (sprawdź wcześniej!)
-- Stosuj Standard SQL (Google BigQuery)
-- Zawsze używaj pełnych nazw tabel: `projekt.dataset.tabela`
-- Dla dat używaj funkcji DATE(), TIMESTAMP(), FORMAT_DATE()
-
-### 3. OBSŁUGA BŁĘDÓW (Self-Correction)
-- Jeśli SQL zwróci błąd, PRZEANALIZUJ go dokładnie
-- Sprawdź ponownie schemat tabeli
-- Popraw zapytanie i spróbuj jeszcze raz
-- Masz maksymalnie 3 próby naprawy błędu
-
-### 4. ODPOWIEDZI
-- Odpowiadaj ZWIĘŹLE i KONKRETNIE
-- Podawaj liczby, daty, nazwy - nie ogólniki
-- Zawsze podaj źródło danych (nazwa tabeli)
-- Jeśli nie możesz odpowiedzieć, wyjaśnij dlaczego
-
-### 5. BEZPIECZEŃSTWO
-- NIGDY nie wykonuj operacji modyfikujących dane (INSERT, UPDATE, DELETE, DROP)
-- Jeśli użytkownik o to poprosi, grzecznie odmów
-"""
 
 
 # === Klasa Agenta ===
@@ -212,9 +180,10 @@ class BigQueryAnalyst:
             
             # Dodaj System Prompt jeśli brak
             if not any(isinstance(m, SystemMessage) for m in messages):
-                messages = [SystemMessage(content=SYSTEM_INSTRUCTION)] + messages
+                messages = [SystemMessage(content=settings.SYSTEM_INSTRUCTION)] + messages
             
             logger.debug(f"Calling model with {len(messages)} messages")
+            logger.debug(f"System instruction: {settings.SYSTEM_INSTRUCTION[:80]}...")
             response = llm_with_tools.invoke(messages)
             logger.debug(f"Model response: tool_calls={bool(response.tool_calls)}")
             
@@ -252,6 +221,10 @@ class BigQueryAnalyst:
         # 7. Kompilacja z pamięcią
         self.app = workflow.compile(checkpointer=self.memory)
         logger.info("LangGraph workflow compiled successfully")
+        
+        # 8. Włącz LangSmith tracing (jeśli konfiguracja dostępna)
+        if settings.ENABLE_TRACING and os.getenv("LANGCHAIN_API_KEY"):
+            logger.info(f"🔍 LangSmith tracing enabled for project: {settings.LANGCHAIN_PROJECT}")
     
     def query(
         self, 

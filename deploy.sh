@@ -35,6 +35,7 @@ gcloud run deploy ${SERVICE_NAME} \
     LANGCHAIN_TRACING_V2=true,\
     LANGCHAIN_PROJECT=asystent_ADK,\
     AGENT_RECURSION_LIMIT=25,\
+    LOG_LEVEL=DEBUG,\
     ALLOWED_ORIGINS=${ALLOWED_ORIGINS} \
   --update-secrets LANGCHAIN_API_KEY=langchain-api-key:latest \
   --memory 1Gi \
