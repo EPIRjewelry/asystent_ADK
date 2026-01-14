@@ -28,7 +28,7 @@ gcloud run deploy ${SERVICE_NAME} \
   --platform managed \
   --region ${REGION} \
   --allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=${VERTEX_LOCATION},MODEL_NAME=publishers/google/models/gemini-3-pro-preview,LANGCHAIN_TRACING_V2=true,LANGCHAIN_PROJECT=asystent_ADK,AGENT_RECURSION_LIMIT=25,LOG_LEVEL=DEBUG,ALLOWED_ORIGINS=${ALLOWED_ORIGINS} \
+  --env-vars-file .env.deploy \
   --update-secrets LANGCHAIN_API_KEY=langchain-api-key:latest \
   --memory 1Gi \
   --cpu 1 \
