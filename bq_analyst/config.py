@@ -4,7 +4,10 @@ Wszystkie ustawienia ładowane z ENV (bez plików .env).
 Uwierzytelnianie przez IAM (Service Account) w Google Cloud.
 """
 import os
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -71,6 +74,43 @@ Twoim zadaniem jest odpowiadanie na pytania biznesowe, korzystając z danych w B
 - Jeśli użytkownik o to poprosi, grzecznie odmów
 """)
 
+    def validate(self) -> bool:
+        """Waliduj krytyczne ustawienia przy starcie."""
+        issues = []
+
+        if self.ENABLE_TRACING:
+            if not self.LANGCHAIN_API_KEY or self.LANGCHAIN_API_KEY.strip() == "":
+                issues.append(
+                    "❌ LANGCHAIN_TRACING_V2=true ale LANGCHAIN_API_KEY jest pusty/brak. "
+                    "Tracing LangSmith NIE będzie dostępny."
+                )
+            else:
+                logger.info(
+                    "✅ LangSmith tracing ENABLED. Project: %s",
+                    self.LANGCHAIN_PROJECT,
+                )
+        else:
+            logger.info("⊘ LangSmith tracing DISABLED (LANGCHAIN_TRACING_V2=false)")
+
+        if not self.PROJECT_ID:
+            issues.append("❌ GOOGLE_CLOUD_PROJECT nie ustawiony!")
+
+        if not self.MODEL_NAME:
+            issues.append("❌ MODEL_NAME nie ustawiony!")
+
+        for issue in issues:
+            logger.warning(issue)
+
+        logger.info(
+            "⚙️  Konfiguracja: PROJECT=%s, MODEL=%s, ENV=%s",
+            self.PROJECT_ID,
+            self.MODEL_NAME,
+            self.ENV,
+        )
+
+        return len(issues) == 0
+
 
 # Singleton ustawień
 settings = Settings()
+settings.validate()

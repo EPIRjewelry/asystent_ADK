@@ -40,11 +40,29 @@ async def lifespan(app: FastAPI):
     """Lifecycle manager dla FastAPI."""
     global agent
     logger.info("🚀 Starting EPIR BigQuery Analyst Agent...")
-    
-    agent = BigQueryAnalyst()
-    agent.set_up()
-    
-    logger.info("✅ Agent ready and listening")
+
+    logger.info("📋 Configuration:")
+    logger.info("   - PROJECT_ID: %s", settings.PROJECT_ID)
+    logger.info("   - MODEL_NAME: %s", settings.MODEL_NAME)
+    logger.info("   - ENABLE_TRACING: %s", settings.ENABLE_TRACING)
+    logger.info(
+        "   - LANGCHAIN_API_KEY present: %s",
+        "✅" if settings.LANGCHAIN_API_KEY else "❌",
+    )
+    logger.info("   - ENV: %s", settings.ENV)
+
+    try:
+        agent = BigQueryAnalyst()
+        agent.set_up()
+        logger.info("✅ Agent ready and listening")
+    except Exception as exc:
+        logger.error(
+            "❌ Failed to initialize agent: %s: %s",
+            type(exc).__name__,
+            exc,
+            exc_info=True,
+        )
+        raise
     yield
     
     logger.info("🛑 Shutting down agent...")
