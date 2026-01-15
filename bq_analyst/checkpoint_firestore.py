@@ -78,6 +78,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         *,
         project_id: str | None = None,
         database: str = "(default)",
+        parent_document: str = "langgraph_meta/checkpointer_anchor",
         checkpoints_collection: str = "langgraph_checkpoints",
         blobs_collection: str = "langgraph_blobs",
         writes_collection: str = "langgraph_writes",
@@ -90,6 +91,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         self.project_id = project_id or default_project
         self.database = database
         self.base_path = f"projects/{self.project_id}/databases/{self.database}/documents"
+        self.query_parent = f"{self.base_path}/{parent_document}"
         self.documents = build(
             "firestore",
             "v1",
@@ -100,6 +102,17 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         self.checkpoints_collection = checkpoints_collection
         self.blobs_collection = blobs_collection
         self.writes_collection = writes_collection
+
+        self._ensure_parent_document()
+
+    def _ensure_parent_document(self) -> None:
+        try:
+            self.documents.patch(
+                name=self.query_parent,
+                body=_encode_fields({"anchor": True}),
+            ).execute()
+        except HttpError as exc:
+            logger.warning("Failed to ensure parent document: %s", exc)
 
     def _doc_path(self, collection: str, doc_id: str) -> str:
         return f"{self.base_path}/{collection}/{doc_id}"
@@ -122,7 +135,6 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         direction: str = "DESCENDING",
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        parent_path = f"{self.base_path}/{collection}"
         structured_query = {
             "from": [{"collectionId": collection}],
             "where": {
@@ -149,7 +161,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
             structured_query["limit"] = limit
 
         response = self.documents.runQuery(
-            parent=parent_path,
+            parent=self.query_parent,
             body={"structuredQuery": structured_query},
         ).execute()
         results: list[dict[str, Any]] = []
