@@ -415,20 +415,8 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
                     "task_path": task_path,
                 }
             )
-            if write_idx >= 0:
-                try:
-                    self.documents.createDocument(
-                        parent=self.base_path,
-                        collectionId=self.writes_collection,
-                        documentId=write_id,
-                        body=payload,
-                    ).execute()
-                except HttpError as exc:
-                    if exc.resp.status != 409:
-                        raise
-            else:
-                path = self._doc_path(self.writes_collection, write_id)
-                self.documents.patch(name=path, body=payload).execute()
+            path = self._doc_path(self.writes_collection, write_id)
+            self.documents.patch(name=path, body=payload).execute()
 
     def delete_thread(self, thread_id: str) -> None:
         for collection in [self.checkpoints_collection, self.blobs_collection, self.writes_collection]:
