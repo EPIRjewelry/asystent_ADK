@@ -122,6 +122,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         direction: str = "DESCENDING",
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
+        parent_path = f"{self.base_path}/{collection}"
         structured_query = {
             "from": [{"collectionId": collection}],
             "where": {
@@ -148,7 +149,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
             structured_query["limit"] = limit
 
         response = self.documents.runQuery(
-            parent=self.base_path,
+            parent=parent_path,
             body={"structuredQuery": structured_query},
         ).execute()
         results: list[dict[str, Any]] = []
