@@ -29,6 +29,23 @@ class Settings:
     # === Agent Configuration ===
     RECURSION_LIMIT: int = int(os.getenv("AGENT_RECURSION_LIMIT", "25"))
     TEMPERATURE: float = float(os.getenv("AGENT_TEMPERATURE", "0.0"))
+
+    # === Checkpointer (pamięć sesji) ===
+    CHECKPOINTER_BACKEND: str = os.getenv("CHECKPOINTER_BACKEND", "memory").lower()
+    FIRESTORE_PROJECT: Optional[str] = os.getenv("FIRESTORE_PROJECT")
+    FIRESTORE_DATABASE: str = os.getenv("FIRESTORE_DATABASE", "(default)")
+    FIRESTORE_CHECKPOINTS_COLLECTION: str = os.getenv(
+        "FIRESTORE_CHECKPOINTS_COLLECTION",
+        "langgraph_checkpoints",
+    )
+    FIRESTORE_BLOBS_COLLECTION: str = os.getenv(
+        "FIRESTORE_BLOBS_COLLECTION",
+        "langgraph_blobs",
+    )
+    FIRESTORE_WRITES_COLLECTION: str = os.getenv(
+        "FIRESTORE_WRITES_COLLECTION",
+        "langgraph_writes",
+    )
     
     # === Tracing (LangSmith) ===
     ENABLE_TRACING: bool = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
@@ -97,6 +114,15 @@ Twoim zadaniem jest odpowiadanie na pytania biznesowe, korzystając z danych w B
 
         if not self.MODEL_NAME:
             issues.append("❌ MODEL_NAME nie ustawiony!")
+
+        if self.CHECKPOINTER_BACKEND == "firestore":
+            logger.info(
+                "🧠 Checkpointer: Firestore (project=%s, db=%s)",
+                self.FIRESTORE_PROJECT or self.PROJECT_ID,
+                self.FIRESTORE_DATABASE,
+            )
+        else:
+            logger.info("🧠 Checkpointer: InMemory (MemorySaver)")
 
         for issue in issues:
             logger.warning(issue)

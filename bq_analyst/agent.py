@@ -22,6 +22,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from google.cloud import bigquery
 
 from bq_analyst.config import settings
+from bq_analyst.checkpoint_firestore import FirestoreCheckpointSaver
 
 # === Logging ===
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -154,8 +155,22 @@ class BigQueryAnalyst:
         self.location = settings.LOCATION
         self.model_name = settings.MODEL_NAME
         self.app = None
-        self.memory = MemorySaver()  # Pamięć sesji
+        self.memory = self._build_checkpointer()  # Pamięć sesji
         logger.info(f"BigQueryAnalyst initialized (project={self.project_id}, model={self.model_name})")
+
+    def _build_checkpointer(self):
+        backend = settings.CHECKPOINTER_BACKEND
+        if backend == "firestore":
+            logger.info("Using Firestore checkpointer (persistent)")
+            return FirestoreCheckpointSaver(
+                project_id=settings.FIRESTORE_PROJECT or settings.PROJECT_ID,
+                database=settings.FIRESTORE_DATABASE,
+                checkpoints_collection=settings.FIRESTORE_CHECKPOINTS_COLLECTION,
+                blobs_collection=settings.FIRESTORE_BLOBS_COLLECTION,
+                writes_collection=settings.FIRESTORE_WRITES_COLLECTION,
+            )
+        logger.info("Using MemorySaver checkpointer (in-memory)")
+        return MemorySaver()
     
     def set_up(self):
         """Inicjalizacja grafu LangGraph (Lazy Loading)."""
