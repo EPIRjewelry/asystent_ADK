@@ -284,6 +284,13 @@ class BigQueryAnalyst:
             # Ostatnia odpowiedź
             last_message = messages[-1]
             response_text = last_message.content if hasattr(last_message, "content") else str(last_message)
+            if isinstance(response_text, list):
+                response_text = "".join(
+                    item.get("text", "") if isinstance(item, dict) else str(item)
+                    for item in response_text
+                )
+            elif not isinstance(response_text, str):
+                response_text = str(response_text)
             
             logger.info(f"Query completed: {len(messages)} messages, {tool_calls_count} tool calls")
             
@@ -296,7 +303,7 @@ class BigQueryAnalyst:
             }
             
         except Exception as e:
-            logger.error(f"Query failed: {e}")
+            logger.error("Query failed: %s", e, exc_info=True)
             return {
                 "response": f"Przepraszam, wystąpił błąd podczas przetwarzania zapytania: {str(e)}",
                 "thread_id": thread_id,

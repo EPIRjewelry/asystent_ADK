@@ -9,8 +9,8 @@ import logging
 from typing import Any, Iterator, Sequence
 
 from google.auth import default as google_auth_default
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from google.auth.transport.requests import AuthorizedSession
+from requests import HTTPError
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.checkpoint.base import (
@@ -91,13 +91,11 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         self.project_id = project_id or default_project
         self.database = database
         self.base_path = f"projects/{self.project_id}/databases/{self.database}/documents"
+        self.base_url = f"https://firestore.googleapis.com/v1/{self.base_path}"
         self.query_parent = f"{self.base_path}/{parent_document}"
-        self.documents = build(
-            "firestore",
-            "v1",
-            credentials=credentials,
-            cache_discovery=False,
-        ).projects().databases().documents()
+        self.query_parent_url = f"{self.base_url}/{parent_document}"
+        self.run_query_url = f"{self.base_url}:runQuery"
+        self.session = AuthorizedSession(credentials)
 
         self.checkpoints_collection = checkpoints_collection
         self.blobs_collection = blobs_collection
@@ -107,15 +105,28 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
 
     def _ensure_parent_document(self) -> None:
         try:
-            self.documents.patch(
-                name=self.query_parent,
+            self._request(
+                "PATCH",
+                self.query_parent_url,
                 body=_encode_fields({"anchor": True}),
-            ).execute()
-        except HttpError as exc:
+            )
+        except HTTPError as exc:
             logger.warning("Failed to ensure parent document: %s", exc)
 
+    def _request(self, method: str, url: str, *, body: dict | None = None) -> Any:
+        response = self.session.request(method, url, json=body)
+        response.raise_for_status()
+        if not response.content:
+            return None
+        return response.json()
+
+    def _name_to_url(self, name: str) -> str:
+        if name.startswith("projects/"):
+            return f"https://firestore.googleapis.com/v1/{name}"
+        return name
+
     def _doc_path(self, collection: str, doc_id: str) -> str:
-        return f"{self.base_path}/{collection}/{doc_id}"
+        return f"{self.base_url}/{collection}/{doc_id}"
 
     def _checkpoint_doc_id(self, thread_id: str, checkpoint_ns: str, checkpoint_id: str) -> str:
         return f"{_safe_id(thread_id)}__{_safe_id(checkpoint_ns)}__{checkpoint_id}"
@@ -135,9 +146,9 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         direction: str = "DESCENDING",
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
-        structured_query = {
-            "from": [{"collectionId": collection}],
-            "where": {
+        structured_query = {"from": [{"collectionId": collection}]}
+        if filters:
+            structured_query["where"] = {
                 "compositeFilter": {
                     "op": "AND",
                     "filters": [
@@ -151,8 +162,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
                         for field, value in filters
                     ],
                 }
-            },
-        }
+            }
         if order_by:
             structured_query["orderBy"] = [
                 {"field": {"fieldPath": order_by}, "direction": direction}
@@ -160,10 +170,11 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
         if limit is not None:
             structured_query["limit"] = limit
 
-        response = self.documents.runQuery(
-            parent=self.query_parent,
+        response = self._request(
+            "POST",
+            self.run_query_url,
             body={"structuredQuery": structured_query},
-        ).execute()
+        )
         results: list[dict[str, Any]] = []
         for item in response or []:
             if "document" in item:
@@ -176,8 +187,8 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
             blob_id = self._blob_doc_id(thread_id, checkpoint_ns, channel, version)
             path = self._doc_path(self.blobs_collection, blob_id)
             try:
-                doc = self.documents.get(name=path).execute()
-            except HttpError:
+                doc = self._request("GET", path)
+            except HTTPError:
                 continue
             data = _decode_fields(doc)
             blob_type = data.get("blob_type")
@@ -194,8 +205,8 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
             doc_id = self._checkpoint_doc_id(thread_id, checkpoint_ns, checkpoint_id)
             path = self._doc_path(self.checkpoints_collection, doc_id)
             try:
-                doc = self.documents.get(name=path).execute()
-            except HttpError:
+                doc = self._request("GET", path)
+            except HTTPError:
                 return None
         else:
             docs = self._run_query(
@@ -356,8 +367,9 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
                 blob_type, blob_data = "empty", b""
             blob_id = self._blob_doc_id(thread_id, checkpoint_ns, channel, version)
             path = self._doc_path(self.blobs_collection, blob_id)
-            self.documents.patch(
-                name=path,
+            self._request(
+                "PATCH",
+                path,
                 body=_encode_fields(
                     {
                         "thread_id": thread_id,
@@ -368,7 +380,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
                         "blob_data": blob_data,
                     }
                 ),
-            ).execute()
+            )
 
         checkpoint_type, checkpoint_data = self.serde.dumps_typed(c)
         metadata_type, metadata_data = self.serde.dumps_typed(get_checkpoint_metadata(config, metadata))
@@ -376,8 +388,9 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
 
         doc_id = self._checkpoint_doc_id(thread_id, checkpoint_ns, checkpoint["id"])
         path = self._doc_path(self.checkpoints_collection, doc_id)
-        self.documents.patch(
-            name=path,
+        self._request(
+            "PATCH",
+            path,
             body=_encode_fields(
                 {
                     "thread_id": thread_id,
@@ -390,7 +403,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
                     "parent_checkpoint_id": parent_checkpoint_id,
                 }
             ),
-        ).execute()
+        )
 
         return {
             "configurable": {
@@ -429,7 +442,7 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
                 }
             )
             path = self._doc_path(self.writes_collection, write_id)
-            self.documents.patch(name=path, body=payload).execute()
+            self._request("PATCH", path, body=payload)
 
     def delete_thread(self, thread_id: str) -> None:
         for collection in [self.checkpoints_collection, self.blobs_collection, self.writes_collection]:
@@ -437,4 +450,4 @@ class FirestoreCheckpointSaver(BaseCheckpointSaver[str]):
             for doc in docs:
                 name = doc.get("name")
                 if name:
-                    self.documents.delete(name=name).execute()
+                    self._request("DELETE", self._name_to_url(name))
